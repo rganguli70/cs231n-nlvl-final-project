@@ -40,7 +40,30 @@ class NLVLLinearNet(NLVLBaseNet):
 
         return embedding
     
-    def embed_query(self, query_tensor):
+    def __query_to_tensor(self, query, max_words=10):
+        embedding = []
+        
+        words = query.lower().split()
+        
+        for word in words:
+            if word in self.vocabulary:
+                # create a one-hot encoded vector for the word
+                word_vector = [0] * len(self.vocabulary)
+                word_index = self.vocabulary.index(word)
+                word_vector[word_index] = 1
+                embedding.append(word_vector)
+            else:
+                # if the word is not in the vocabulary, use a placeholder vector
+                embedding.append([0] * len(self.vocabulary))
+        
+        # convert the embedding list to a PyTorch tensor and pad to max word length
+        embedding_tensor = torch.tensor(embedding, dtype=torch.float32)
+        embedding_tensor = torch.nn.functional.pad(embedding_tensor, (0, 0, 0, max_words - embedding_tensor.shape[0]))
+        
+        return embedding_tensor
+    
+    def embed_query(self, query):
+        query_tensor = self.__query_to_tensor(query)
         x = torch.flatten(query_tensor)
         x = F.relu(self.embed_query_fc1(x))
         x = F.relu(self.embed_query_fc2(x))

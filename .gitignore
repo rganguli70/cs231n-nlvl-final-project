@@ -1,3 +1,6 @@
 /data/
+/data-small/
 /runs/
 *.pth
+sandbox.py
+ws_config.json

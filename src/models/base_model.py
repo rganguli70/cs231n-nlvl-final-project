@@ -6,19 +6,17 @@ class NLVLBaseNet(nn.Module, ABC):
     def __init__(self):
         super().__init__()
 
-    def forward(self, **kwargs):
-        video_frames = kwargs["video_frames"]
-        query_tensor = kwargs["query_tensor"]
-
+    def forward(self, video_frames, query_tokens, label_ids=None):        
         video_embedding = self.embed_video(video_frames)
-        query_embedding = self.embed_query(query_tensor)
+        query_embedding = self.embed_query(query_tokens)
 
-        features = torch.cat([video_embedding, query_embedding])
+        # dim=1 to concat over batch dimension
+        features = torch.cat([video_embedding, query_embedding], dim=1)
         features = self.backbone(features)
 
-        pred_start_s, pred_end_s = self.regression_head(features)
-
-        return pred_start_s, pred_end_s
+        preds = self.regression_head(features)
+        
+        return preds
 
     @abstractmethod
     def embed_video(self, video_frames):
