@@ -1,3 +1,4 @@
+accelerate
 av
 matplotlib
 pandas
@@ -5,3 +6,5 @@ tensorboard
 torch
 torchvision
 tqdm
+transformers
+peft

@@ -1,0 +1,2 @@
+az-cli
+azure-ai-ml

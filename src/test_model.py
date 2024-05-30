@@ -1,16 +1,17 @@
-from dataloader import CharadesDataset
-from linear_model import NLVLLinearNet
+from utils import CharadesDataset
+# from linear_model import NLVLLinearNet
+from models import NLVLTransformerNet
 import torch
 from tqdm import tqdm 
 
 device = "mps" if torch.backends.mps.is_available() else "cpu"
 print("Using device:", device)
 
-dataset = CharadesDataset("data/Charades_v1_test.csv", 
-                          "data/Charades_v1_classes.txt", 
-                          "data/videos/")
+dataset = CharadesDataset("../data/Charades_v1_test.csv", 
+                          "../data/Charades_v1_classes.txt", 
+                          "../data/videos/")
 
-model = NLVLLinearNet()
+model = NLVLTransformerNet()
 checkpoint = torch.load("trained_model.pth")
 model.load_state_dict(checkpoint['model_state_dict'])
 
@@ -32,7 +33,7 @@ for i, data in enumerate(pbar):
 
     pbar.set_description(f"Testing loss: {loss}")
 
-    # if i == 10:
-    #     break
+    if i == 10:
+        break # DEBUG
 
 print(f"Average test set loss: {cum_loss / i}")
