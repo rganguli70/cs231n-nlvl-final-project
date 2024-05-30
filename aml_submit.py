@@ -16,7 +16,7 @@ def get_args(raw_args=None):
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--experiment_name", default="nlvl-experiment", help="Experiment name for AML Workspace")
-    parser.add_argument("--data_asset", default="Charades-small", help="Name of dataset to mount for training")
+    parser.add_argument("--data_asset", default="Charades-small", choices=["Charades-small", "Charades"], help="Name of dataset to mount for training")
     parser.add_argument("--compute", default="E4s-v3", choices=["E4s-v3", "v100"], help="AML compute target")
 
     args = parser.parse_args(raw_args)
