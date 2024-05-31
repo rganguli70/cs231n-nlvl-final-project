@@ -9,7 +9,7 @@ from transformers import AutoTokenizer
 class CharadesDataset(Dataset):
     def __init__(self, annotations_file, classes_file, video_dir):
         self.annotations = pd.read_csv(annotations_file)
-        self.max_frames = 45
+        self.max_frames = 60 # a.k.a. seconds
         self.annotations = self.annotations[self.annotations["length"] < self.max_frames]
         self.annotations = self.annotations[self.annotations["actions"].notnull()]
 
@@ -19,8 +19,8 @@ class CharadesDataset(Dataset):
 
         self.video_dir = video_dir
 
-        self.tokenizer = AutoTokenizer.from_pretrained("microsoft/phi-2")
         self.max_words = 10
+        self.tokenizer = AutoTokenizer.from_pretrained("microsoft/phi-2")
     
     def __pad_video(self, video_frames, max_height=480, max_width=480):
         return torch.nn.functional.pad(video_frames, 
@@ -37,7 +37,7 @@ class CharadesDataset(Dataset):
         query_tokens["attention_mask"] = torch.nn.functional.pad(query_tokens["attention_mask"], 
                                                                  (0, self.max_words - query_tokens["attention_mask"].shape[1])
                                                                 )
-            
+    
     def __len__(self):
         return len(self.annotations)
 
@@ -46,13 +46,14 @@ class CharadesDataset(Dataset):
         # print(data)
         video_fname = data["id"] + ".mp4"
         video_path = os.path.join(self.video_dir, video_fname)
+
         video_frames, _, metadata = read_video(video_path, pts_unit='sec')
+
         fps = int(metadata["video_fps"])
-        # use slicing with the step size of fps to 
-        # subsample the video frames to 1 frame per second
+        # use slicing with the step size of fps to subsample the video frames to 1 frame per second
         video_frames = video_frames[::fps]
         video_frames = self.__pad_video(video_frames)
-        # video_frames.to("cpu")
+        video_frames = video_frames.unsqueeze(0) # add batch dimension
 
         actions = data["actions"]
         actions = actions.split(";")
@@ -68,9 +69,7 @@ class CharadesDataset(Dataset):
         end_s = float(label[2])
 
         return {
-            "video_frames": video_frames.unsqueeze(0), 
+            "video_frames": video_frames,
             "query_tokens": query_tokens,
-            "video_positions": torch.arange(0, self.max_frames).unsqueeze(1).repeat(1, 1),  # Example video positions
-            "text_positions": torch.arange(0, self.max_words).unsqueeze(1).repeat(1, 1),  # Example text positions
             "label_ids": torch.tensor([start_s, end_s])
             }

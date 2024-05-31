@@ -5,7 +5,6 @@ import torch
 from transformers import TrainingArguments
 from peft import get_peft_model, LoraConfig
 import argparse
-import os
 
 device = None
 if torch.cuda.is_available():
@@ -44,7 +43,7 @@ def run():
 
     # pretrain remaining layers
     modules_to_save=["embed_video_conv", "embed_video_pool", "embed_video_fc", "embed_query_fc", 
-                    "position_encoder", "position_decoder", "span_predictor", "mask_predictor"]
+                    "position_encoder", "position_decoder", "span_predictor"]
 
     lora_config = LoraConfig(
         target_modules=target_modules,
@@ -67,14 +66,15 @@ def run():
     training_args = TrainingArguments(output_dir="outputs", 
                                     overwrite_output_dir=True, 
                                     fp16=True if device == "cuda" else False,
+                                    do_train=True, do_eval=True,
                                     per_device_train_batch_size=bsz,
                                     per_device_eval_batch_size=bsz,
-                                    num_train_epochs=1,
-                                    # max_steps=(len(eval_set) // bsz) * 2,
+                                    num_train_epochs=2,
                                     optim="adamw_torch",
-                                    learning_rate=3e-4,  # Adjusted learning rate
+                                    learning_rate=3e-4,
                                     evaluation_strategy="steps",
-                                    eval_steps=len(eval_set) // bsz,
+                                    eval_steps=len(eval_set),
+                                    label_names=["label_ids"],
                                     dataloader_num_workers=1,
                                     remove_unused_columns=False,
                                     report_to="tensorboard",
@@ -88,17 +88,6 @@ def run():
         eval_dataset=eval_set,
         data_collator=collate_fn,
     )
-
-    def train(self):
-        self.model.train()
-        for step, batch in enumerate(self.train_dataloader):
-            outputs = self.model(**batch)
-            loss = outputs.loss
-            loss.backward()
-            torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)  # Gradient clipping
-            self.optimizer.step()
-            self.lr_scheduler.step()
-            self.model.zero_grad()
 
     trainer.train()
 
