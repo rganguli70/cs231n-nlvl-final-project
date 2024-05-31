@@ -5,9 +5,9 @@ from torch.nn import TransformerEncoder, TransformerEncoderLayer, TransformerDec
 # from transformers import ViTConfig, ViTModel, PhiConfig, PhiModel
 from transformers import ViTModel, ViTImageProcessor, AutoModel, AutoTokenizer
 
-class MS_DETR(nn.Module):
+class NLVL_DETR(nn.Module):
     def __init__(self, d_model=512, nhead=8, num_encoder_layers=5, num_decoder_layers=5, dim_feedforward=2048, dropout=0.1):
-        super(MS_DETR, self).__init__()
+        super(NLVL_DETR, self).__init__()
         
         self.d_model = d_model
         self.nhead = nhead
@@ -92,6 +92,8 @@ class MS_DETR(nn.Module):
         output = self.transformer_decoder(text_features, memory)
 
         # Output predictions
-        span_logits = self.span_predictor(output) * torch.as_tensor([1, 0, 1, 0]).to(video_frames.device)
+        span_logits = self.span_predictor(output) \
+            * torch.as_tensor([1, 0, 1, 0]).to(video_frames.device) \
+            + torch.as_tensor([0, 0, 0, 1]).to(video_frames.device)
         
         return span_logits

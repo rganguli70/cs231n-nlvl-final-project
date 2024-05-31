@@ -1,6 +1,6 @@
 from utils.dataloader import CharadesDataset
 from utils.trainer import NLVLTrainer
-from models.ms_detr_v2 import MS_DETR
+from models.nlvl_detr_v2 import NLVL_DETR
 import torch
 from transformers import TrainingArguments
 from peft import get_peft_model, LoraConfig
@@ -28,7 +28,7 @@ def run():
     print("Train set size:", len(train_set)) 
     print("Eval set size:", len(eval_set))
 
-    model = MS_DETR()
+    model = NLVL_DETR()
     print(model)
 
     # use LoRA to train transformer layers
