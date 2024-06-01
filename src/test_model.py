@@ -1,39 +1,35 @@
 from utils import CharadesDataset
-# from linear_model import NLVLLinearNet
-from models import NLVLTransformerNet
+from models.nlvl_detr_v2 import NLVL_DETR
 import torch
 from tqdm import tqdm 
 
-device = "mps" if torch.backends.mps.is_available() else "cpu"
+device = None
+if torch.cuda.is_available():
+    device = "cuda"  
+elif torch.backends.mps.is_available():
+    device = "mps"
+else:
+    device = "cpu"
 print("Using device:", device)
 
 dataset = CharadesDataset("../data/Charades_v1_test.csv", 
                           "../data/Charades_v1_classes.txt", 
                           "../data/videos/")
 
-model = NLVLTransformerNet()
+model = NLVL_DETR()
 checkpoint = torch.load("trained_model.pth")
 model.load_state_dict(checkpoint['model_state_dict'])
 
-criterion = torch.nn.MSELoss()
-
-cum_loss = 0
 pbar = tqdm(dataset)
 for i, data in enumerate(pbar):
     video_frames = data["video_frames"]
     query_tensor = data["query_tensor"]
     start_s, end_s = data["start_s"], data["end_s"]
-    labels = torch.tensor([start_s, end_s], dtype=torch.float32, requires_grad=True, device=device)
 
-    pred_start_s, pred_end_s = model(video_frames=video_frames, query_tensor=query_tensor)
-    preds = torch.tensor([pred_start_s, pred_end_s], dtype=torch.float32, requires_grad=True, device=device)
+    span_preds = model(video_frames=video_frames, query_tensor=query_tensor)
 
-    loss = criterion(preds, labels)
-    cum_loss += loss
-
-    pbar.set_description(f"Testing loss: {loss}")
+    print(f"ground truth start_s={start_s}, end_s={end_s}")
+    print(f"prediction start_s={span_preds[0].item()}, end_s=start_s={span_preds[1].item()}")
 
     if i == 10:
         break # DEBUG
-
-print(f"Average test set loss: {cum_loss / i}")

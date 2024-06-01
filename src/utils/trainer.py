@@ -2,18 +2,17 @@ from transformers import Trainer
 from torch import nn
 import torch, torchvision
 
-span_loss_fn = nn.MSELoss()
+DEBUG = True
 
 class NLVLTrainer(Trainer):
     def compute_loss(self, model, inputs, return_outputs=False):
         label_ids = inputs.pop("label_ids")
 
-        preds = model(**inputs)
+        span_preds = model(**inputs).unsqueeze(0)
 
-        span_preds = preds[0].squeeze(1).squeeze(1)
         label_ids = torch.as_tensor(
-            [label_ids[0].item(), 0, label_ids[1].item(), 0]
-        ).unsqueeze(0).to(label_ids.device)
+            [label_ids[0].item(), 0, label_ids[1].item(), 1]
+        ).unsqueeze(0).to(span_preds.device)
 
         loss = torchvision.ops.distance_box_iou_loss(span_preds, label_ids).squeeze(0)
 

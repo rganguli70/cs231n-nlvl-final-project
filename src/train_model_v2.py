@@ -5,6 +5,7 @@ import torch
 from transformers import TrainingArguments
 from peft import get_peft_model, LoraConfig
 import argparse
+import os
 
 device = None
 if torch.cuda.is_available():
@@ -69,13 +70,13 @@ def run():
                                     do_train=True, do_eval=True,
                                     per_device_train_batch_size=bsz,
                                     per_device_eval_batch_size=bsz,
-                                    num_train_epochs=2,
+                                    num_train_epochs=1,
                                     optim="adamw_torch",
                                     learning_rate=3e-4,
                                     evaluation_strategy="steps",
                                     eval_steps=len(eval_set),
                                     label_names=["label_ids"],
-                                    dataloader_num_workers=1,
+                                    dataloader_num_workers=4,
                                     remove_unused_columns=False,
                                     report_to="tensorboard",
                                     gradient_accumulation_steps=1,

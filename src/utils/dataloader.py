@@ -19,8 +19,9 @@ class CharadesDataset(Dataset):
 
         self.video_dir = video_dir
 
-        self.max_words = 10
+        self.max_words = 11
         self.tokenizer = AutoTokenizer.from_pretrained("microsoft/phi-2")
+        self.tokenizer.pad_token = self.tokenizer.eos_token
     
     def __pad_video(self, video_frames, max_height=480, max_width=480):
         return torch.nn.functional.pad(video_frames, 
@@ -29,14 +30,6 @@ class CharadesDataset(Dataset):
                                        0, max_height - video_frames.shape[1], 
                                        0, self.max_frames - video_frames.shape[0])
                                        )
-    
-    def __pad_query_tokens(self, query_tokens):
-        query_tokens["input_ids"] = torch.nn.functional.pad(query_tokens["input_ids"],
-                                                            (0, self.max_words - query_tokens["input_ids"].shape[1])
-                                                            )
-        query_tokens["attention_mask"] = torch.nn.functional.pad(query_tokens["attention_mask"], 
-                                                                 (0, self.max_words - query_tokens["attention_mask"].shape[1])
-                                                                )
     
     def __len__(self):
         return len(self.annotations)
@@ -62,8 +55,7 @@ class CharadesDataset(Dataset):
         label = label.split(" ")
 
         query = self.classes[label[0]]
-        query_tokens = self.tokenizer(query, return_tensors="pt")
-        self.__pad_query_tokens(query_tokens)
+        query_tokens = self.tokenizer(query, max_length=self.max_words, padding="max_length", return_tensors="pt")
 
         start_s = float(label[1])
         end_s = float(label[2])
