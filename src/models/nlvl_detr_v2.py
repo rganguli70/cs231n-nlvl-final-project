@@ -30,7 +30,6 @@ class KMeansLayer(nn.Module):
 
             # Check for convergence (if cluster centers do not change)
             if torch.all(cluster_centers == new_cluster_centers):
-                print("...convergence reached!!!")
                 break
             cluster_centers = new_cluster_centers
 
