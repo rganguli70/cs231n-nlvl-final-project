@@ -66,7 +66,6 @@ def run():
     bsz = 1
     training_args = TrainingArguments(output_dir="outputs", 
                                     overwrite_output_dir=True, 
-                                    fp16=True if device == "cuda" else False,
                                     do_train=True, do_eval=True,
                                     per_device_train_batch_size=bsz,
                                     per_device_eval_batch_size=bsz,
@@ -74,7 +73,7 @@ def run():
                                     optim="adamw_torch",
                                     learning_rate=3e-4,
                                     evaluation_strategy="steps",
-                                    eval_steps=len(eval_set),
+                                    eval_steps=100,
                                     label_names=["label_ids"],
                                     dataloader_num_workers=2,
                                     remove_unused_columns=False,
@@ -91,6 +90,7 @@ def run():
     )
 
     trainer.train()
+    trainer.save_model("outputs/model")
 
 def parse_args():
     parser = argparse.ArgumentParser()
