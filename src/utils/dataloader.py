@@ -62,6 +62,6 @@ class CharadesDataset(Dataset):
 
         return {
             "video_frames": video_frames,
-            "query_tokens": query_tokens,
-            "label_ids": torch.tensor([start_s, end_s])
+            "query_tokens": query_tokens.data,
+            "label_ids": torch.tensor([start_s, 0, end_s, 1])
             }

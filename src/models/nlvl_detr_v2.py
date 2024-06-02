@@ -4,36 +4,36 @@ from transformers import ViTModel, ViTImageProcessor, AutoModel
 
 VERBOSE = False
 
-class KMeansLayer(nn.Module):
-    def __init__(self, n_clusters, max_iter=100):
-        super(KMeansLayer, self).__init__()
-        self.n_clusters = n_clusters
-        self.max_iter = max_iter
+# class KMeansLayer(nn.Module):
+#     def __init__(self, n_clusters, max_iter=100):
+#         super(KMeansLayer, self).__init__()
+#         self.n_clusters = n_clusters
+#         self.max_iter = max_iter
 
-    def forward(self, x):
-        if VERBOSE: print("Applying kmeans clustering...")
-        num_frames, d_model = x.shape
-        x = x.view(-1, d_model)  # Flatten the input to (num_samples, num_features)
+#     def forward(self, x):
+#         if VERBOSE: print("Applying kmeans clustering...")
+#         num_frames, d_model = x.shape
+#         x = x.view(-1, d_model)  # Flatten the input to (num_samples, num_features)
 
-        # Randomly initialize cluster centers
-        initial_indices = torch.randperm(x.size(0))[:self.n_clusters]
-        cluster_centers = x[initial_indices]
+#         # Randomly initialize cluster centers
+#         initial_indices = torch.randperm(x.size(0))[:self.n_clusters]
+#         cluster_centers = x[initial_indices]
 
-        for _ in range(self.max_iter):
-            # Compute distances to cluster centers
-            distances = torch.cdist(x, cluster_centers)
-            # Assign samples to the nearest cluster center
-            cluster_assignments = torch.argmin(distances, dim=1)
+#         for _ in range(self.max_iter):
+#             # Compute distances to cluster centers
+#             distances = torch.cdist(x, cluster_centers)
+#             # Assign samples to the nearest cluster center
+#             cluster_assignments = torch.argmin(distances, dim=1)
 
-            # Compute new cluster centers
-            new_cluster_centers = torch.stack([x[cluster_assignments == k].mean(dim=0) for k in range(self.n_clusters)])
+#             # Compute new cluster centers
+#             new_cluster_centers = torch.stack([x[cluster_assignments == k].mean(dim=0) for k in range(self.n_clusters)])
 
-            # Check for convergence (if cluster centers do not change)
-            if torch.all(cluster_centers == new_cluster_centers):
-                break
-            cluster_centers = new_cluster_centers
+#             # Check for convergence (if cluster centers do not change)
+#             if torch.all(cluster_centers == new_cluster_centers):
+#                 break
+#             cluster_centers = new_cluster_centers
 
-        return cluster_centers
+#         return cluster_centers
 
 class NLVL_DETR(nn.Module):
     def __init__(self, d_model=512, nhead=8, num_encoder_layers=5, num_decoder_layers=5, dim_feedforward=2048, dropout=0.1):
@@ -47,7 +47,7 @@ class NLVL_DETR(nn.Module):
         self.vit = ViTModel.from_pretrained("google/vit-base-patch16-224")
         self.embed_video_fc = nn.Linear(self.vit.config.hidden_size, self.d_model)
 
-        self.kmeans_layer = KMeansLayer(n_clusters=10)
+        # self.kmeans_layer = KMeansLayer(n_clusters=20)
         
         self.phi = AutoModel.from_pretrained("microsoft/phi-2") # tokenization handled by dataloader
         self.embed_query_fc = nn.Linear(self.phi.config.hidden_size, self.d_model)
@@ -110,12 +110,12 @@ class NLVL_DETR(nn.Module):
     def forward(self, video_frames, query_tokens, label_ids=None):
         # Extract Features
         video_features = self.embed_video(video_frames) # [60, 512]
-        cluster_centers = self.kmeans_layer(video_features) # [10, 512]
+        # video_features = self.kmeans_layer(video_features) # [10, 512]
         text_features = self.embed_query(query_tokens) # [1, 512]
         
         # Transformer encoder
         if VERBOSE: print("Encoding video...")
-        memory = self.transformer_encoder(cluster_centers) # [10, 512]
+        memory = self.transformer_encoder(video_features) # [10, 512]
         
         # Transformer decoder
         if VERBOSE: print("Decoding query with video context...")

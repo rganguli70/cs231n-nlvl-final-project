@@ -76,9 +76,9 @@ def run():
                                     evaluation_strategy="steps",
                                     eval_steps=len(eval_set),
                                     label_names=["label_ids"],
-                                    dataloader_num_workers=4,
+                                    dataloader_num_workers=2,
                                     remove_unused_columns=False,
-                                    report_to="tensorboard",
+                                    report_to=["tensorboard"],
                                     gradient_accumulation_steps=1,
                                     )
 
@@ -94,7 +94,7 @@ def run():
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data_dir", type=str, default="../data", help="Path to data directory")
+    parser.add_argument("--data_dir", type=str, default="../data-small", help="Path to data directory")
     args = parser.parse_args()
     return args
 
