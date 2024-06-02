@@ -16,8 +16,10 @@ def get_args(raw_args=None):
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--experiment_name", default="nlvl-experiment", help="Experiment name for AML Workspace")
+    parser.add_argument("--display_name", default="nvlv-detr", help="Display name for training job")
     parser.add_argument("--data_asset", default="Charades-small", choices=["Charades-small", "Charades"], help="Name of dataset to mount for training")
     parser.add_argument("--compute", default="E4s-v3", choices=["E4s-v3", "v100"], help="AML compute target")
+    parser.add_argument("--ort", action="store_true", help="Enable ONNX Runtime for accelerated training")
 
     args = parser.parse_args(raw_args)
     return args
@@ -37,9 +39,11 @@ def main(raw_args=None):
 
     job = command(
         code=code_dir,
-        command="python train_model_v2.py --data_dir ${{inputs.charades}}",
+        command="python train_model_v2.py --data_dir ${{inputs.charades}}" \
+              + "--ort" if args.ort else "",
         compute=args.compute,
-        display_name="nvlv-transformer-pretrain",
+        display_name=args.display_name \
+                   + "-ort" if args.ort else "",
         # environment=Environment(build=BuildContext(path=environment_dir)),
         environment="cs231n-env@latest",
         environment_variables={"MODE": "cloud",

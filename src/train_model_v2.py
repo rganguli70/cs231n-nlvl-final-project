@@ -56,9 +56,10 @@ def run():
     model = get_peft_model(model, lora_config)
     model.print_trainable_parameters()
 
-    # if os.getenv("MODE", "local") == "cloud":
-    #     from onnxruntime.training.ortmodule import ORTModule
-    #     model = ORTModule(model)
+    if args.ort and os.getenv("MODE", "local") == "cloud":
+        from onnxruntime.training.ortmodule import ORTModule
+        # torch.onnx.register_custom_op("aten::randperm", torch.randperm, 1) 
+        model = ORTModule(model)
 
     model.to(device)
 
@@ -92,7 +93,10 @@ def run():
 
 def parse_args():
     parser = argparse.ArgumentParser()
+    
     parser.add_argument("--data_dir", type=str, default="../data-small", help="Path to data directory")
+    parser.add_argument("--ort", action="store_true", help="Enable ONNX Runtime for accelerated training")
+    
     args = parser.parse_args()
     return args
 
