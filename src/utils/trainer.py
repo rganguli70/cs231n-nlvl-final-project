@@ -12,7 +12,7 @@ class NLVLTrainer(Trainer):
         span_preds = model(**inputs).unsqueeze(0)
         if VERBOSE: print("span_preds", span_preds)
 
-        loss = torchvision.ops.distance_box_iou_loss(span_preds, label_ids).squeeze(0)
+        loss = 1 - torchvision.ops.distance_box_iou_loss(span_preds, label_ids).squeeze(0)
         if VERBOSE: print("loss", loss)
 
         return (loss, span_preds) if return_outputs else loss
