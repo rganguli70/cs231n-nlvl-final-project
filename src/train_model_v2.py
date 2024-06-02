@@ -43,8 +43,7 @@ def run():
             target_modules.append(module_name)
 
     # pretrain remaining layers
-    modules_to_save=["embed_video_conv", "embed_video_pool", "embed_video_fc", "embed_query_fc", 
-                    "position_encoder", "position_decoder", "span_predictor"]
+    modules_to_save=["embed_video_fc", "embed_query_fc", "position_encoder_video", "span_predictor"]
 
     lora_config = LoraConfig(
         target_modules=target_modules,

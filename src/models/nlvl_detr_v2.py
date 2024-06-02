@@ -1,8 +1,10 @@
 import torch
 import torch.nn as nn
 from transformers import ViTModel, ViTImageProcessor, AutoModel
+import os
+import time
 
-VERBOSE = False
+VERBOSE = os.getenv("VERBOSE", "false").lower() == "true"
 
 # class KMeansLayer(nn.Module):
 #     def __init__(self, n_clusters, max_iter=100):
@@ -47,6 +49,8 @@ class NLVL_DETR(nn.Module):
         self.vit = ViTModel.from_pretrained("google/vit-base-patch16-224")
         self.embed_video_fc = nn.Linear(self.vit.config.hidden_size, self.d_model)
 
+        self.max_frames = 60
+        self.position_encoder_video = nn.Embedding(self.max_frames, d_model)
         # self.kmeans_layer = KMeansLayer(n_clusters=20)
         
         self.phi = AutoModel.from_pretrained("microsoft/phi-2") # tokenization handled by dataloader
@@ -76,7 +80,7 @@ class NLVL_DETR(nn.Module):
 
     # video_frames.shape   [1, 60, 480, 480, 3]
     def embed_video(self, video_frames):
-        if VERBOSE: print("Embedding video...")
+        if VERBOSE: print("Embedding video...", end=" "); start_time = time.time()
         batch_size, num_frames, height, width, channels = video_frames.shape
         embedding = torch.zeros((num_frames, self.d_model), device=video_frames.device)
         for f in range(num_frames):
@@ -91,11 +95,12 @@ class NLVL_DETR(nn.Module):
             
             embedding[f] = self.embed_video_fc(output.pooler_output.squeeze(0))
         
+        if VERBOSE: print(f"time: {round(time.time() - start_time, 4)} sec")
         return embedding
 
     # query_tokens[{"input_ids", "attention_mask"}].shape   [1, 15]
     def embed_query(self, query_tokens): 
-        if VERBOSE: print("Embedding query...")
+        if VERBOSE: print("Embedding query...", end=" "); start_time = time.time()
         del query_tokens['attention_mask'] # no masking required for text input
     
         with torch.no_grad(): # FREEZE text embedding
@@ -103,6 +108,7 @@ class NLVL_DETR(nn.Module):
 
         embedding = self.embed_query_fc(torch.mean(embedding.last_hidden_state, 1))
 
+        if VERBOSE: print(f"time: {round(time.time() - start_time, 4)} sec")
         return embedding
 
     # video_frames.shape                                    [1, 60, 480, 480, 3]
@@ -112,14 +118,22 @@ class NLVL_DETR(nn.Module):
         video_features = self.embed_video(video_frames) # [60, 512]
         # video_features = self.kmeans_layer(video_features) # [10, 512]
         text_features = self.embed_query(query_tokens) # [1, 512]
-        
+
+        # Positional encoding
+        if VERBOSE: print("Positional encoding for video...", end=" "); start_time = time.time()
+        video_positions = self.position_encoder_video(torch.arange(0, video_frames.shape[1], device=video_frames.device))
+        video_features = video_features + video_positions # [60, 512]
+        if VERBOSE: print(f"time: {round(time.time() - start_time, 4)} sec")
+
         # Transformer encoder
-        if VERBOSE: print("Encoding video...")
-        memory = self.transformer_encoder(video_features) # [10, 512]
+        if VERBOSE: print("Encoding video...", end=" "); start_time = time.time()
+        memory = self.transformer_encoder(video_features) # [60, 512]
+        if VERBOSE: print(f"time: {round(time.time() - start_time, 4)} sec")
         
         # Transformer decoder
-        if VERBOSE: print("Decoding query with video context...")
+        if VERBOSE: print("Decoding query with video context...", end=" "); start_time = time.time()
         output = self.transformer_decoder(text_features, memory) # [1, 512]
+        if VERBOSE: print(f"time: {round(time.time() - start_time, 4)} sec")
 
         """
         The following code is a computational trick help utilize 2d IoU loss. 2d IoU loss
@@ -128,8 +142,10 @@ class NLVL_DETR(nn.Module):
         to 0 and 1 respectively.
         """
         # Output predictions
+        if VERBOSE: print("Predicting span...", end=" "); start_time = time.time()
         span_logits = self.span_predictor(output.squeeze(0)) \
             * torch.as_tensor([1, 0, 1, 0]).to(video_frames.device) \
             + torch.as_tensor([0, 0, 0, 1]).to(video_frames.device) # [1, 4]
 
+        if VERBOSE: print(f"time: {round(time.time() - start_time, 4)} sec")
         return span_logits
