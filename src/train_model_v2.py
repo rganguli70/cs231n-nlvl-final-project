@@ -89,7 +89,6 @@ def run():
     )
 
     trainer.train()
-    trainer.save_model("outputs/model")
 
 def parse_args():
     parser = argparse.ArgumentParser()
