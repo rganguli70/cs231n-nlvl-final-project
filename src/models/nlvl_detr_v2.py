@@ -121,7 +121,9 @@ class NLVL_DETR(nn.Module):
 
         # Positional encoding
         if VERBOSE: print("Positional encoding for video...", end=" "); start_time = time.time()
-        video_positions = self.position_encoder_video(torch.arange(0, video_frames.shape[1], device=video_frames.device))
+        video_positions = self.position_encoder_video(
+            torch.arange(0, video_frames.shape[1], device=video_frames.device)
+        ) # [60, 512]
         video_features = video_features + video_positions # [60, 512]
         if VERBOSE: print(f"time: {round(time.time() - start_time, 4)} sec")
 

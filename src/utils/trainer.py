@@ -1,11 +1,13 @@
 from transformers import Trainer
 import torchvision
 import os
+import time
 
 VERBOSE = os.getenv("VERBOSE", "false").lower() == "true"
 
 class NLVLTrainer(Trainer):
     def compute_loss(self, model, inputs, return_outputs=False):
+        if VERBOSE: print("Running train_step...", end=" "); start_time = time.time()
         label_ids = inputs.pop("label_ids")
         span_preds = model(**inputs).unsqueeze(0)
 
@@ -15,4 +17,5 @@ class NLVLTrainer(Trainer):
         loss = torchvision.ops.distance_box_iou_loss(span_preds, label_ids).squeeze(0)
         if VERBOSE: print("loss", loss)
 
+        if VERBOSE: print(f"time: {round(time.time() - start_time, 4)} sec")
         return (loss, span_preds) if return_outputs else loss
