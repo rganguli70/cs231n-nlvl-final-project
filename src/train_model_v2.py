@@ -7,6 +7,8 @@ from peft import get_peft_model, LoraConfig
 import argparse
 import os
 
+VERBOSE = os.getenv("VERBOSE", "false").lower() == "true"
+
 device = None
 if torch.cuda.is_available():
     device = "cuda"  
@@ -57,9 +59,15 @@ def run():
     model.print_trainable_parameters()
 
     if args.ort and os.getenv("MODE", "local") == "cloud":
-        from onnxruntime.training.ortmodule import ORTModule
+        from onnxruntime.training.ortmodule import ORTModule, DebugOptions, LogLevel
         # torch.onnx.register_custom_op("aten::randperm", torch.randperm, 1) 
-        model = ORTModule(model)
+        model = ORTModule(model, 
+            DebugOptions(
+                save_onnx=True, 
+                onnx_prefix="outputs/nlvl_detr", 
+                log_level=(LogLevel.VERBOSE if VERBOSE else LogLevel.INFO)
+            ) 
+        )
 
     model.to(device)
 

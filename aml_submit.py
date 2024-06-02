@@ -19,7 +19,8 @@ def get_args(raw_args=None):
     parser.add_argument("--display_name", default="nvlv-detr", help="Display name for training job")
     parser.add_argument("--data_asset", default="Charades-small", choices=["Charades-small", "Charades"], help="Name of dataset to mount for training")
     parser.add_argument("--compute", default="E4s-v3", choices=["E4s-v3", "v100"], help="AML compute target")
-    parser.add_argument("--ort", action="store_true", help="Enable ONNX Runtime for accelerated training")
+    parser.add_argument("--ort", default=False, action="store_true", help="Enable ONNX Runtime for accelerated training")
+    parser.add_argument("--verbose", default=False, action="store_true", help="verbose")
 
     args = parser.parse_args(raw_args)
     return args
@@ -37,18 +38,23 @@ def main(raw_args=None):
     # environment_dir = root_dir / "environment"
     code_dir = root_dir / "src"
 
+    env_vars = {"MODE": "cloud",
+                "TOKENIZERS_PARALLELISM": "true"}
+    if args.ort:
+        env_vars["ORTMODULE_FALLBACK_POLICY"] = "FALLBACK_DISABLE",
+    if args.verbose:
+        env_vars["VERBOSE"] = "true"
+
     job = command(
         code=code_dir,
         command="python train_model_v2.py --data_dir ${{inputs.charades}}" \
-              + "--ort" if args.ort else "",
+              + " --ort" if args.ort else "",
         compute=args.compute,
         display_name=args.display_name \
                    + "-ort" if args.ort else "",
         # environment=Environment(build=BuildContext(path=environment_dir)),
         environment="cs231n-env@latest",
-        environment_variables={"MODE": "cloud",
-                               "ORTMODULE_FALLBACK_POLICY": "FALLBACK_DISABLE",
-                               "TOKENIZERS_PARALLELISM": "true"},
+        environment_variables=env_vars,
         experiment_name=args.experiment_name,
         inputs={
             "charades": Input(
