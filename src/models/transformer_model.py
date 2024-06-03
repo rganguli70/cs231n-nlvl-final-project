@@ -2,7 +2,7 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 from models.base_model import NLVLBaseNet
-from transformers import ViTConfig, ViTModel, PhiConfig, PhiModel
+from transformers import ViTConfig, ViTModel, VivitConfig, VivitModel, PhiConfig, PhiModel
 import os
 
 class NLVLTransformerNet(NLVLBaseNet):
@@ -10,6 +10,8 @@ class NLVLTransformerNet(NLVLBaseNet):
         super().__init__()
         self.vit_config = ViTConfig(image_size=480, num_hidden_layers=2, hidden_size=12)
         self.vit = ViTModel(self.vit_config)
+        self.vvit_config = VivitConfig(image_size=480, num_hidden_layers=2, hidden_size=12)
+        self.vvit = VivitModel(self.vvit_config)
         self.embed_video_norm = nn.BatchNorm2d(1)
         self.embed_video_conv = nn.Conv2d(1, 1, 4, stride=2)
         self.embed_video_pool = nn.MaxPool2d(4)
