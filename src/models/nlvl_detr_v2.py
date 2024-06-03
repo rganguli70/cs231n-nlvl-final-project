@@ -1,8 +1,12 @@
 import torch
 import torch.nn as nn
+from torch.utils.data import random_split
 from transformers import ViTModel, ViTImageProcessor, AutoModel
 import os
 import time
+import numpy as np
+from sklearn.cluster import KMeans
+
 
 VERBOSE = os.getenv("VERBOSE", "false").lower() == "true"
 
@@ -37,12 +41,14 @@ VERBOSE = os.getenv("VERBOSE", "false").lower() == "true"
 
 #         return cluster_centers
 
+    
 class NLVL_DETR(nn.Module):
     def __init__(self, d_model=512, nhead=8, num_encoder_layers=5, num_decoder_layers=5, dim_feedforward=2048, dropout=0.1):
         super(NLVL_DETR, self).__init__()
         
         self.d_model = d_model
         self.nhead = nhead
+        self.lnorm = nn.LayerNorm([C, H, W])
 
         # Feature extractors
         self.image_processor = ViTImageProcessor.from_pretrained('google/vit-base-patch16-224')
@@ -51,7 +57,7 @@ class NLVL_DETR(nn.Module):
 
         self.max_frames = 60
         self.position_encoder_video = nn.Embedding(self.max_frames, d_model)
-        # self.kmeans_layer = KMeansLayer(n_clusters=20)
+        self.kmeans_layer = KMeans(n_clusters=20, n_init=5)
         
         self.phi = AutoModel.from_pretrained("microsoft/phi-2") # tokenization handled by dataloader
         self.embed_query_fc = nn.Linear(self.phi.config.hidden_size, self.d_model)
@@ -113,10 +119,31 @@ class NLVL_DETR(nn.Module):
 
     # video_frames.shape                                    [1, 60, 480, 480, 3]
     # query_tokens[{"input_ids", "attention_mask"}].shape   [1, 15]
+    
+    def memory_consolidation_vit(video_features, n_chunks, n_layers, mc_method, num_mem):
+        chunked_video = np.split(video_features, n_chunks, axis=1)
+        memory = None
+        zs = []
+        for z in chunked_video:
+            z_norm = self.lnorm(z)
+            for _ in range(n_layers):
+                if memory is None:
+                    y = self_attention(z_norm) + z
+                else:
+                    kv = np.concatenate(z_norm, memory)
+                    y = cross_attention(q = z_norm, kv=kv) + z 
+                y_norm = self.lnorm(y)
+                z = mlp(y_norm) + y
+                memory = self.kmeans_layer().fit(memory)memory_consolidation(memory, z, num_mem, mc_method)
+                memory = self.lnorm(memory)
+                zs.append(z)
+        return np.concatenate(zs, axis=1)
+        
     def forward(self, video_frames, query_tokens, label_ids=None):
         # Extract Features
         video_features = self.embed_video(video_frames) # [60, 512]
         # video_features = self.kmeans_layer(video_features) # [10, 512]
+        
         text_features = self.embed_query(query_tokens) # [1, 512]
 
         # Positional encoding
@@ -131,6 +158,10 @@ class NLVL_DETR(nn.Module):
         if VERBOSE: print("Encoding video...", end=" "); start_time = time.time()
         memory = self.transformer_encoder(video_features) # [60, 512]
         if VERBOSE: print(f"time: {round(time.time() - start_time, 4)} sec")
+
+        # Memory consolidation
+        zs = memory_consolidation ( video_features, 
+                                   
         
         # Transformer decoder
         if VERBOSE: print("Decoding query with video context...", end=" "); start_time = time.time()
